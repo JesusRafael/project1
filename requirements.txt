@@ -1,10 +1,15 @@
-pandas
-matplotlib
-seaborn
-psycopg2
-plotly
-numpy
-streamlit
-ruptures
-statsmodels
-prophet
+cmdstanpy @ file:///home/conda/feedstock_root/build_artifacts/cmdstanpy_1760997237797/work
+matplotlib==3.10.7
+matplotlib-inline @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-inline_1761214490209/work
+numpy==2.1.2
+pandas==2.3.2
+patsy==1.0.2
+plotly==6.4.0
+prophet==1.1.5
+psycopg2==2.9.11
+psycopg2-binary==2.9.11
+ruptures==1.1.10
+scikit-learn==1.7.2
+seaborn==0.13.2
+statsmodels==0.14.5
+streamlit==1.51.0
