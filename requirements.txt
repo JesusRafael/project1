@@ -1,0 +1,10 @@
+pandas
+matplotlib
+seaborn
+psycopg2
+plotly
+numpy
+streamlit
+ruptures
+statsmodels
+prophet
