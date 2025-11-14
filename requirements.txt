@@ -5,7 +5,6 @@ pandas==2.3.2
 patsy==1.0.2
 plotly==6.4.0
 prophet==1.1.5
-psycopg2==2.9.11
 psycopg2-binary==2.9.11
 ruptures==1.1.10
 scikit-learn==1.7.2
