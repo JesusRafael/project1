@@ -9,7 +9,7 @@ import time
 import matplotlib.pyplot as plt
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.seasonal import seasonal_decompose
-from prophet import Prophet
+# from prophet import Prophet
 import os
 
 # Page configuration
@@ -104,34 +104,34 @@ dfd = fetch_data(sql_daily)
 dfd = dfd.iloc[11:].copy()
 if 'time' in dfd.columns:
     dfd['time'] = pd.to_datetime(dfd['time'])
-    dfd = dfd.set_index('time')
+    # dfd = dfd.set_index('time')
 
 variable_estudio = 'precipitation_probability_mean'
+anomaly_threshold = st.sidebar.slider("Anomaly Detection Threshold (z-score)", 1.0, 4.0, 2.5, 0.1)
 
 
 
+# df_prophet = dfd[[variable_estudio]].reset_index()
+# df_prophet.rename(columns={'time': 'ds', variable_estudio: 'y'}, inplace=True)
+# df_prophet['ds'] = df_prophet['ds'].dt.date
+# model = Prophet(
+#     yearly_seasonality=False, 
+#     weekly_seasonality=True,  
+#     daily_seasonality=False
+# )
+# model.fit(df_prophet)
 
-df_prophet = dfd[[variable_estudio]].reset_index()
-df_prophet.rename(columns={'time': 'ds', variable_estudio: 'y'}, inplace=True)
-df_prophet['ds'] = df_prophet['ds'].dt.date
-model = Prophet(
-    yearly_seasonality=False, 
-    weekly_seasonality=True,  
-    daily_seasonality=False
-)
-model.fit(df_prophet)
+# # 2. Predecir
+# future = model.make_future_dataframe(periods=0)
+# forecast = model.predict(future)
 
-# 2. Predecir
-future = model.make_future_dataframe(periods=0)
-forecast = model.predict(future)
+# # 3. Unir los resultados con el DataFrame original
+# df_anomalia = df_prophet.set_index('ds').join(forecast.set_index('ds')[['yhat', 'yhat_lower', 'yhat_upper']])
+# df_anomalia['anomaly'] = 0
+# df_anomalia.loc[df_anomalia['y'] > df_anomalia['yhat_upper'], 'anomaly'] = 1 
+# df_anomalia.loc[df_anomalia['y'] < df_anomalia['yhat_lower'], 'anomaly'] = -1 
 
-# 3. Unir los resultados con el DataFrame original
-df_anomalia = df_prophet.set_index('ds').join(forecast.set_index('ds')[['yhat', 'yhat_lower', 'yhat_upper']])
-df_anomalia['anomaly'] = 0
-df_anomalia.loc[df_anomalia['y'] > df_anomalia['yhat_upper'], 'anomaly'] = 1 
-df_anomalia.loc[df_anomalia['y'] < df_anomalia['yhat_lower'], 'anomaly'] = -1 
-
-dias_anomalos = df_anomalia[df_anomalia['anomaly'] != 0].copy()
+# dias_anomalos = df_anomalia[df_anomalia['anomaly'] != 0].copy()
 
 if selection == "1. Exploración de Datos (EDA)":
     ## 📈 Exploración de Datos (EDA)
@@ -201,26 +201,60 @@ elif selection == "2. Detección de Anomalías":
     st.write("Esta sección se centrará en los resultados del modelo de detección de anomalías.")
     st.subheader("Gráfica A: Distribución de Puntuaciones de Anomalía")
 
-
-    st.info(f"\nTotal de días anómalos encontrados: {len(dias_anomalos)}")
+    if not dfd.empty:
+        dfd['time'] = pd.to_datetime(dfd['time'])
+        dfd[variable_estudio] = pd.to_numeric(dfd[variable_estudio], errors='coerce')
     
-    fig = plt.figure(figsize=(16, 7))
-    plt.plot(df_anomalia.index, df_anomalia['y'], label='Valor Real', color='blue')
-    plt.plot(df_anomalia.index, df_anomalia['yhat'], label='Predicción (Modelo Prophet)', color='green', linestyle='--')
+    # Apply anomaly detection
+    df = detect_anomalies(dfd, variable_estudio, anomaly_threshold)
+    anomalies = df[df['is_anomaly'] == True]
+    fig = plt.figure(figsize=(15, 6)) # Ajusta el tamaño del gráfico
 
-    # 2. Sombrear la banda de confianza
-    plt.fill_between(df_anomalia.index, df_anomalia['yhat_lower'], df_anomalia['yhat_upper'], 
-                    color='green', alpha=0.1, label='Banda de Confianza')
+    # A. Plotear toda la serie de tiempo (línea azul)
+    plt.plot(df.index, df[variable_estudio], label=variable_estudio, color='skyblue', linewidth=1.5)
 
-    # 3. Marcar los puntos anómalos
-    plt.scatter(dias_anomalos.index, dias_anomalos['y'], color='red', s=40, label='Día Anómalo')
+    # B. Resaltar los puntos anómalos (puntos rojos)
+    # Usamos los datos del DataFrame 'anomalies'
+    plt.scatter(anomalies.index, anomalies[variable_estudio], 
+                color='red', 
+                label='Días Anómalos', 
+                s=50, # Tamaño del punto
+                zorder=5) # Asegura que los puntos rojos estén por encima de la línea
 
-    plt.title(f'Detección de Días Anómalos en {variable_estudio} con Prophet')
-    plt.xlabel('Fecha')
-    plt.ylabel('Probabilidad de Precipitación (%)')
-    plt.legend()
-    plt.grid(True)
+    # --- 4. CONFIGURACIÓN Y ETIQUETAS ---
+
+    plt.title('Detección de Anomalías en la Serie de Tiempo', fontsize=16)
+    plt.xlabel('Fecha/Día', fontsize=12)
+    plt.ylabel('Valor de la Variable Objetivo', fontsize=12)
+    plt.legend(loc='best')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.xticks(rotation=45) # Rota las etiquetas del eje X para mejor lectura
+    plt.tight_layout() # Ajusta automáticamente los parámetros de la subtrama
     st.pyplot(fig)
+
+
+
+
+
+    # st.info(f"\nTotal de días anómalos encontrados: {len(dias_anomalos)}")
+    
+    # fig = plt.figure(figsize=(16, 7))
+    # plt.plot(df_anomalia.index, df_anomalia['y'], label='Valor Real', color='blue')
+    # plt.plot(df_anomalia.index, df_anomalia['yhat'], label='Predicción (Modelo Prophet)', color='green', linestyle='--')
+
+    # # 2. Sombrear la banda de confianza
+    # plt.fill_between(df_anomalia.index, df_anomalia['yhat_lower'], df_anomalia['yhat_upper'], 
+    #                 color='green', alpha=0.1, label='Banda de Confianza')
+
+    # # 3. Marcar los puntos anómalos
+    # plt.scatter(dias_anomalos.index, dias_anomalos['y'], color='red', s=40, label='Día Anómalo')
+
+    # plt.title(f'Detección de Días Anómalos en {variable_estudio} con Prophet')
+    # plt.xlabel('Fecha')
+    # plt.ylabel('Probabilidad de Precipitación (%)')
+    # plt.legend()
+    # plt.grid(True)
+    # st.pyplot(fig)
 
 
     st.markdown("---")
